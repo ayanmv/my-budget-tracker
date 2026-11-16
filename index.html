@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Budget Tracker — Weekly & Monthly Finance</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    /* Custom scrollbar for transaction list */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.7);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors duration-200 font-sans antialiased">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm shadow-indigo-600/20">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-tight">CampusLedger</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Student Budget & Cashflow Tracker</p>
+        </div>
+      </div>
+
+      <!-- Controls Bar -->
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <!-- Weekly / Monthly Segmented Toggle -->
+        <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200/70 dark:border-slate-700/70" role="group">
+          <button id="btn-mode-weekly" type="button" class="px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all">
+            Weekly
+          </button>
+          <button id="btn-mode-monthly" type="button" class="px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all">
+            Monthly
+          </button>
+        </div>
+
+        <!-- Currency Selector -->
+        <select id="currency-select" aria-label="Currency" class="px-3 py-2 text-xs sm:text-sm font-medium rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+          <option value="PKR">PKR (Rs.)</option>
+          <option value="USD">USD ($)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="GBP">GBP (£)</option>
+        </select>
+
+        <!-- Budget Settings Button -->
+        <button id="btn-open-settings" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/70 transition-colors">
+          <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span class="hidden sm:inline">Limits & Categories</span>
+        </button>
+
+        <!-- Dark/Light Theme Toggle -->
+        <button id="btn-theme-toggle" type="button" aria-label="Toggle theme" class="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/70 transition-colors">
+          <!-- Sun icon (shown in dark mode) -->
+          <svg id="icon-sun" class="w-4 h-4 hidden dark:block text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <!-- Moon icon (shown in light mode) -->
+          <svg id="icon-moon" class="w-4 h-4 block dark:hidden text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Top Context Bar: Active Period Date Range & Filter -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+      <div class="flex items-center gap-2.5">
+        <span class="inline-flex h-2.5 w-2.5 rounded-full bg-indigo-500"></span>
+        <span id="period-label-badge" class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Weekly View</span>
+        <span class="text-slate-300 dark:text-slate-700">|</span>
+        <span id="period-date-range" class="text-sm font-medium text-slate-700 dark:text-slate-300">Loading dates...</span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <label for="scope-filter" class="text-xs font-medium text-slate-500 dark:text-slate-400">Calculation Scope:</label>
+        <select id="scope-filter" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="current">Current Period (Auto)</option>
+          <option value="this_week">This Week Only</option>
+          <option value="this_month">This Month Only</option>
+          <option value="all">All Logged Expenses</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Overview Summary Cards (4-card grid) -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Card 1: Total Budget Limit -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span id="card-budget-title" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Weekly Budget</span>
+          <button id="btn-quick-edit-budget" type="button" title="Edit Budget Limits" class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+            <span>Adjust</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+        </div>
+        <div class="mt-3">
+          <div id="stat-total-budget" class="text-2xl sm:text-3xl font-bold tabular-nums text-slate-900 dark:text-white">Rs. 0</div>
+          <p id="stat-budget-sub" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Sum of 7 category limits</p>
+        </div>
+      </div>
+
+      <!-- Card 2: Total Spent -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span id="card-spent-title" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Spent</span>
+          <span id="stat-spent-pct-badge" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 tabular-nums">0%</span>
+        </div>
+        <div class="mt-3">
+          <div id="stat-total-spent" class="text-2xl sm:text-3xl font-bold tabular-nums text-slate-900 dark:text-white">Rs. 0</div>
+          <p id="stat-spent-sub" class="text-xs text-slate-500 dark:text-slate-400 mt-1">0 transactions logged</p>
+        </div>
+      </div>
+
+      <!-- Card 3: Remaining Balance -->
+      <div id="card-remaining" class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Remaining Balance</span>
+          <span id="stat-status-pill" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">On Track</span>
+        </div>
+        <div class="mt-3">
+          <div id="stat-remaining" class="text-2xl sm:text-3xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">Rs. 0</div>
+          <p id="stat-remaining-sub" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Available to spend</p>
+        </div>
+      </div>
+
+      <!-- Card 4: Daily Safe-to-Spend -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Daily Safe-to-Spend</span>
+          <span id="stat-days-left-badge" class="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-300">7 days left</span>
+        </div>
+        <div class="mt-3">
+          <div id="stat-daily-safe" class="text-2xl sm:text-3xl font-bold tabular-nums text-indigo-600 dark:text-indigo-400">Rs. 0</div>
+          <p id="stat-daily-sub" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Per day for rest of period</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Dashboard Grid: Left (Logger + Chart) & Right (Categories + History) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left Column (5 cols on lg): Quick Expense Logger & Spending Breakdown Chart -->
+      <div class="lg:col-span-5 space-y-6">
+
+        <!-- Quick Expense Logger Card -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 dark:text-white">Log Expense</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Record a purchase and update balances instantly</p>
+            </div>
+            <span class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-lg">+</span>
+          </div>
+
+          <form id="expense-form" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <!-- Amount -->
+              <div>
+                <label for="exp-amount" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Amount (<span id="form-currency-symbol">Rs.</span>) *
+                </label>
+                <input id="exp-amount" type="number" step="any" min="0.01" required placeholder="e.g. 450"
+                  class="w-full px-3.5 py-2.5 text-sm font-semibold tabular-nums rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+
+              <!-- Category -->
+              <div>
+                <label for="exp-category" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Category *
+                </label>
+                <select id="exp-category" required
+                  class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </select>
+              </div>
+            </div>
+
+            <!-- Description / Note -->
+            <div>
+              <label for="exp-note" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Description / Note
+              </label>
+              <input id="exp-note" type="text" maxlength="80" placeholder="e.g. Cafeteria lunch, Metro card top-up, Printouts..."
+                class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <!-- Date -->
+              <div>
+                <label for="exp-date" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Date *
+                </label>
+                <input id="exp-date" type="date" required
+                  class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+
+              <!-- Payment Method -->
+              <div>
+                <label for="exp-method" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Payment Method
+                </label>
+                <select id="exp-method"
+                  class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="Cash">Cash</option>
+                  <option value="Card">Debit / Credit Card</option>
+                  <option value="Bank / RAAST">Bank Transfer / RAAST</option>
+                  <option value="Mobile Wallet">Mobile Wallet (JazzCash/EasyPaisa)</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit"
+              class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold text-sm shadow-sm shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Add Expense</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Spending Breakdown Donut Chart Card -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 dark:text-white">Spending by Category</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Visual distribution for active scope</p>
+            </div>
+          </div>
+
+          <div class="relative h-60 w-full flex items-center justify-center">
+            <canvas id="spending-chart"></canvas>
+            <div id="chart-empty-state" class="hidden text-center py-8">
+              <p class="text-sm font-medium text-slate-500 dark:text-slate-400">No expenses logged in this period yet.</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Log an expense above to see the breakdown.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column (7 cols on lg): Category Progress & Transaction History -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- Category Budget Breakdown -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 dark:text-white">Category Budgets</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Track category caps & remaining allowances</p>
+            </div>
+            <button id="btn-manage-categories-inline" type="button"
+              class="px-3 py-1.5 text-xs font-semibold rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors">
+              + Edit Limits / Add Category
+            </button>
+          </div>
+
+          <!-- Category Progress Bars Container -->
+          <div id="categories-list" class="space-y-4">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Transaction History & Controls -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 dark:text-white">Transaction History</h2>
+              <p id="history-subtitle" class="text-xs text-slate-500 dark:text-slate-400">Showing recent student expenses</p>
+            </div>
+
+            <!-- Utility Actions: Export CSV, Sample Data, Clear -->
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="btn-export-csv" type="button"
+                class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>Export CSV</span>
+              </button>
+              <button id="btn-load-sample" type="button"
+                class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
+                Load Sample Data
+              </button>
+              <button id="btn-clear-data" type="button"
+                class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 transition-colors">
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          <!-- Search & Category Filter Row -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
+            <div class="sm:col-span-2 relative">
+              <input id="search-transactions" type="text" placeholder="Search notes, payment method..."
+                class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <div>
+              <select id="filter-history-category"
+                class="w-full px-3 py-2 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="ALL">All Categories</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Transactions List -->
+          <div id="transactions-list" class="divide-y divide-slate-100 dark:divide-slate-800 max-h-[430px] overflow-y-auto pr-1">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal: Budget Limits & Category Manager -->
+  <div id="settings-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900 dark:text-white">Budget Limits & Categories</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Customize Weekly & Monthly limits or add new student categories</p>
+        </div>
+        <button id="btn-close-settings" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto space-y-6">
+        <!-- Auto-Sync Option -->
+        <div class="flex items-center justify-between p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60">
+          <div>
+            <p class="text-sm font-semibold text-slate-900 dark:text-white">Auto-sync Monthly = 4 × Weekly</p>
+            <p class="text-xs text-slate-600 dark:text-slate-400">Automatically scales monthly targets when weekly limits change (or vice versa)</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input id="toggle-auto-sync" type="checkbox" class="sr-only peer" />
+            <div class="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+        </div>
+
+        <!-- Existing Categories Editor Table -->
+        <div>
+          <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-200 dark:border-slate-800">
+            <div class="col-span-5">Category</div>
+            <div class="col-span-3">Weekly Limit</div>
+            <div class="col-span-3">Monthly Limit</div>
+            <div class="col-span-1 text-right">Del</div>
+          </div>
+          <div id="modal-categories-list" class="divide-y divide-slate-100 dark:divide-slate-800 mt-1">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Add Custom Category Form -->
+        <div class="pt-3 border-t border-slate-200 dark:border-slate-800">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-3">Add Custom Category</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <div class="sm:col-span-5">
+              <input id="new-cat-name" type="text" placeholder="e.g. Hostel / Rent" maxlength="32"
+                class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="sm:col-span-3">
+              <input id="new-cat-weekly" type="number" min="0" step="any" placeholder="Weekly limit"
+                class="w-full px-3 py-2 text-sm tabular-nums rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="sm:col-span-2">
+              <input id="new-cat-color" type="color" value="#8b5cf6" title="Pick category color"
+                class="w-full h-[38px] p-1 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer" />
+            </div>
+            <div class="sm:col-span-2">
+              <button id="btn-add-category" type="button"
+                class="w-full h-[38px] px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors">
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3.5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+        <button id="btn-save-settings" type="button"
+          class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-colors">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation Modal (Replaces window.confirm) -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+      <h3 id="confirm-title" class="text-base font-bold text-slate-900 dark:text-white">Confirm Action</h3>
+      <p id="confirm-message" class="text-sm text-slate-600 dark:text-slate-400 mt-2">Are you sure you want to proceed?</p>
+      <div class="mt-5 flex items-center justify-end gap-2.5">
+        <button id="btn-confirm-cancel" type="button" class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
+          Cancel
+        </button>
+        <button id="btn-confirm-ok" type="button" class="px-4 py-2 text-xs font-semibold rounded-xl bg-rose-600 hover:bg-rose-700 text-white">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * CampusLedger — Student Weekly & Monthly Budget Tracker
+     * Self-contained application with localStorage persistence, Chart.js visualization,
+     * multi-currency formatting, and responsive UI.
+     */
+    (function () {
+      'use strict';
+
+      const STORAGE_KEY = 'campus_ledger_budget_v1';
+
+      const CURRENCIES = {
+        PKR: { symbol: 'Rs.', locale: 'en-PK', decimals: 0 },
+        USD: { symbol: '$', locale: 'en-US', decimals: 2 },
+        EUR: { symbol: '€', locale: 'de-DE', decimals: 2 },
+        GBP: { symbol: '£', locale: 'en-GB', decimals: 2 }
+      };
+
+      const DEFAULT_CATEGORIES = [
+        { id: 'cat_food', name: 'Food & Dining', color: '#f97316', weeklyLimit: 3500, monthlyLimit: 14000 },
+        { id: 'cat_transport', name: 'Transport & Fuel', color: '#06b6d4', weeklyLimit: 1800, monthlyLimit: 7200 },
+        { id: 'cat_uni', name: 'University & Supplies', color: '#6366f1', weeklyLimit: 1500, monthlyLimit: 6000 },
+        { id: 'cat_entertainment', name: 'Entertainment & Gaming', color: '#ec4899', weeklyLimit: 1200, monthlyLimit: 4800 },
+        { id: 'cat_fitness', name: 'Fitness & Health', color: '#10b981', weeklyLimit: 1000, monthlyLimit: 4000 },
+        { id: 'cat_tech', name: 'Subscriptions & Tech', color: '#8b5cf6', weeklyLimit: 800, monthlyLimit: 3200 },
+        { id: 'cat_misc', name: 'Miscellaneous', color: '#64748b', weeklyLimit: 700, monthlyLimit: 2800 }
+      ];
+
+      // Helper: Format local YYYY-MM-DD date string safely without timezone shift
+      function toLocalDateStr(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      // Generate realistic sample transactions anchored around today's date
+      function generateSampleTransactions() {
+        const today = new Date();
+        const daysAgo = (n) => {
+          const d = new Date(today);
+          d.setDate(today.getDate() - n);
+          return toLocalDateStr(d);
+        };
+
+        return [
+          { id: 'tx_1', amount: 420, categoryId: 'cat_food', note: 'Campus Cafe Lunch & Chai', date: daysAgo(0), method: 'Cash' },
+          { id: 'tx_2', amount: 350, categoryId: 'cat_transport', note: 'InDrive / Metro Commute', date: daysAgo(0), method: 'Mobile Wallet' },
+          { id: 'tx_3', amount: 650, categoryId: 'cat_uni', note: 'Lab Manual & Spiral Printouts', date: daysAgo(1), method: 'Cash' },
+          { id: 'tx_4', amount: 1150, categoryId: 'cat_food', note: 'Dinner with Study Group', date: daysAgo(2), method: 'Bank / RAAST' },
+          { id: 'tx_5', amount: 799, categoryId: 'cat_tech', note: 'Spotify & Cloud Storage Student Plan', date: daysAgo(2), method: 'Card' },
+          { id: 'tx_6', amount: 900, categoryId: 'cat_fitness', note: 'Campus Gym Monthly Pass Share', date: daysAgo(3), method: 'Bank / RAAST' },
+          { id: 'tx_7', amount: 550, categoryId: 'cat_entertainment', note: 'Weekend Cinema Ticket', date: daysAgo(4), method: 'Card' },
+          { id: 'tx_8', amount: 800, categoryId: 'cat_transport', note: 'Bike Fuel Refill', date: daysAgo(5), method: 'Cash' },
+          { id: 'tx_9', amount: 480, categoryId: 'cat_misc', note: 'Haircut & Toiletries', date: daysAgo(8), method: 'Cash' },
+          { id: 'tx_10', amount: 1600, categoryId: 'cat_food', note: 'Weekly Hostel Groceries & Snacks', date: daysAgo(10), method: 'Bank / RAAST' }
+        ];
+      }
+
+      // Application State
+      let state = {
+        mode: 'weekly', // 'weekly' | 'monthly'
+        currency: 'PKR',
+        scopeFilter: 'current', // 'current' | 'this_week' | 'this_month' | 'all'
+        autoSyncLimits: true,
+        theme: 'light',
+        categories: [],
+        transactions: [],
+        searchQuery: '',
+        historyCategoryFilter: 'ALL'
+      };
+
+      let spendingChart = null;
+      let pendingConfirmCallback = null;
+
+      // Persistence: Load & Save
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            state = {
+              ...state,
+              ...parsed,
+              categories: Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
+              transactions: Array.isArray(parsed.transactions) ? parsed.transactions : []
+            };
+          } else {
+            // First visit: initialize with student defaults & sample transactions
+            state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+            state.transactions = generateSampleTransactions();
+            // Respect OS dark mode preference on first visit
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+              state.theme = 'dark';
+            }
+            saveState();
+          }
+        } catch (err) {
+          console.error('Failed to load state from localStorage:', err);
+          state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+          state.transactions = generateSampleTransactions();
+        }
+      }
+
+      function saveState() {
+        try {
+          const toSave = {
+            mode: state.mode,
+            currency: state.currency,
+            scopeFilter: state.scopeFilter,
+            autoSyncLimits: state.autoSyncLimits,
+            theme: state.theme,
+            categories: state.categories,
+            transactions: state.transactions
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        } catch (err) {
+          console.error('Failed to save state:', err);
+          showToast('Warning: Could not save to browser storage.', 'error');
+        }
+      }
+
+      // Currency Formatting
+      function formatMoney(amount) {
+        const cfg = CURRENCIES[state.currency] || CURRENCIES.PKR;
+        const absVal = Math.abs(Number(amount) || 0);
+        const formatted = absVal.toLocaleString('en-US', {
+          minimumFractionDigits: cfg.decimals,
+          maximumFractionDigits: cfg.decimals
+        });
+        const sign = amount < 0 ? '-' : '';
+        return `${sign}${cfg.symbol} ${formatted}`;
+      }
+
+      // Date Range Helpers (Monday-to-Sunday Week & Calendar Month)
+      function getCurrentWeekBounds() {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+        const start = new Date(today);
+        start.setDate(today.getDate() + diffToMonday);
+
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+
+        const daysRemaining = Math.max(1, Math.floor((end - today) / (1000 * 60 * 60 * 24)) + 1);
+
+        return {
+          startStr: toLocalDateStr(start),
+          endStr: toLocalDateStr(end),
+          startObj: start,
+          endObj: end,
+          daysRemaining
+        };
+      }
+
+      function getCurrentMonthBounds() {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        const daysRemaining = Math.max(1, Math.floor((end - today) / (1000 * 60 * 60 * 24)) + 1);
+
+        return {
+          startStr: toLocalDateStr(start),
+          endStr: toLocalDateStr(end),
+          startObj: start,
+          endObj: end,
+          daysRemaining
+        };
+      }
+
+      function formatShortDate(dateStr) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+
+      // Determine active effective period ('this_week' | 'this_month' | 'all')
+      function getEffectiveScope() {
+        if (state.scopeFilter === 'current') {
+          return state.mode === 'weekly' ? 'this_week' : 'this_month';
+        }
+        return state.scopeFilter;
+      }
+
+      function getFilteredTransactionsForScope() {
+        const scope = getEffectiveScope();
+        if (scope === 'all') {
+          return [...state.transactions];
+        }
+        const bounds = scope === 'this_week' ? getCurrentWeekBounds() : getCurrentMonthBounds();
+        return state.transactions.filter(tx => tx.date >= bounds.startStr && tx.date <= bounds.endStr);
+      }
+
+      // Toast Notification
+      function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        const bgClass = type === 'error'
+          ? 'bg-rose-600 text-white'
+          : 'bg-slate-900 dark:bg-slate-800 text-white border border-slate-700';
+
+        toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl shadow-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition-all duration-300 transform translate-y-2 opacity-0 ${bgClass}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => {
+          toast.classList.remove('translate-y-2', 'opacity-0');
+        });
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 2800);
+      }
+
+      // Custom Confirm Dialog
+      function openConfirmDialog(title, message, onConfirm) {
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-message').textContent = message;
+        pendingConfirmCallback = onConfirm;
+        const modal = document.getElementById('confirm-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+
+      function closeConfirmDialog() {
+        const modal = document.getElementById('confirm-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        pendingConfirmCallback = null;
+      }
+
+      // Apply Theme
+      function applyTheme() {
+        const html = document.documentElement;
+        if (state.theme === 'dark') {
+          html.classList.add('dark');
+        } else {
+          html.classList.remove('dark');
+        }
+      }
+
+      // Render Header Controls & Date Context
+      function renderHeaderAndContext() {
+        const btnWeekly = document.getElementById('btn-mode-weekly');
+        const btnMonthly = document.getElementById('btn-mode-monthly');
+
+        if (state.mode === 'weekly') {
+          btnWeekly.className = 'px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm transition-all';
+          btnMonthly.className = 'px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all';
+        } else {
+          btnMonthly.className = 'px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm transition-all';
+          btnWeekly.className = 'px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all';
+        }
+
+        document.getElementById('currency-select').value = state.currency;
+        document.getElementById('scope-filter').value = state.scopeFilter;
+        document.getElementById('form-currency-symbol').textContent = CURRENCIES[state.currency].symbol;
+
+        const weekBounds = getCurrentWeekBounds();
+        const monthBounds = getCurrentMonthBounds();
+        const badge = document.getElementById('period-label-badge');
+        const rangeText = document.getElementById('period-date-range');
+
+        if (state.mode === 'weekly') {
+          badge.textContent = 'Weekly Budget Mode';
+          rangeText.textContent = `Current Week: ${formatShortDate(weekBounds.startStr)} – ${formatShortDate(weekBounds.endStr)}`;
+        } else {
+          badge.textContent = 'Monthly Budget Mode';
+          const monthName = monthBounds.startObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          rangeText.textContent = `Current Month: ${monthName} (${formatShortDate(monthBounds.startStr)} – ${formatShortDate(monthBounds.endStr)})`;
+        }
+      }
+
+      // Render Summary Cards
+      function renderSummaryCards(scopedTransactions) {
+        const limitKey = state.mode === 'weekly' ? 'weeklyLimit' : 'monthlyLimit';
+        const totalBudget = state.categories.reduce((sum, c) => sum + (Number(c[limitKey]) || 0), 0);
+        const totalSpent = scopedTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+        const remaining = totalBudget - totalSpent;
+        const pctUsed = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+
+        // Card 1: Total Budget
+        document.getElementById('card-budget-title').textContent = state.mode === 'weekly' ? 'Weekly Budget Limit' : 'Monthly Budget Limit';
+        document.getElementById('stat-total-budget').textContent = formatMoney(totalBudget);
+        document.getElementById('stat-budget-sub').textContent = `Across ${state.categories.length} active categories`;
+
+        // Card 2: Total Spent
+        const scope = getEffectiveScope();
+        const scopeNames = {
+          this_week: 'Spent This Week',
+          this_month: 'Spent This Month',
+          all: 'Total All-Time Spent'
+        };
+        document.getElementById('card-spent-title').textContent = scopeNames[scope] || 'Total Spent';
+        document.getElementById('stat-total-spent').textContent = formatMoney(totalSpent);
+        document.getElementById('stat-spent-pct-badge').textContent = `${Math.round(pctUsed)}% used`;
+        document.getElementById('stat-spent-sub').textContent = `${scopedTransactions.length} transaction${scopedTransactions.length === 1 ? '' : 's'} in scope`;
+
+        // Card 3: Remaining Balance with Dynamic Health Styling
+        const remEl = document.getElementById('stat-remaining');
+        const pillEl = document.getElementById('stat-status-pill');
+        const subEl = document.getElementById('stat-remaining-sub');
+
+        remEl.textContent = formatMoney(remaining);
+
+        if (remaining < 0) {
+          // Over budget -> Crimson Red
+          remEl.className = 'text-2xl sm:text-3xl font-bold tabular-nums text-rose-600 dark:text-rose-400';
+          pillEl.className = 'px-2 py-0.5 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300';
+          pillEl.textContent = 'Over Budget';
+          subEl.textContent = `Exceeded limit by ${formatMoney(Math.abs(remaining))}`;
+        } else if (pctUsed >= 80) {
+          // Warning (>80% spent) -> Amber
+          remEl.className = 'text-2xl sm:text-3xl font-bold tabular-nums text-amber-600 dark:text-amber-400';
+          pillEl.className = 'px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+          pillEl.textContent = 'Near Limit';
+          subEl.textContent = `${(100 - pctUsed).toFixed(0)}% of budget remaining`;
+        } else {
+          // Healthy -> Emerald Green
+          remEl.className = 'text-2xl sm:text-3xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400';
+          pillEl.className = 'px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+          pillEl.textContent = 'Healthy';
+          subEl.textContent = `${(100 - pctUsed).toFixed(0)}% of budget remaining`;
+        }
+
+        // Card 4: Daily Safe-to-Spend
+        const bounds = state.mode === 'weekly' ? getCurrentWeekBounds() : getCurrentMonthBounds();
+        const daysLeft = bounds.daysRemaining;
+        const safePerDay = remaining > 0 ? remaining / daysLeft : 0;
+
+        document.getElementById('stat-days-left-badge').textContent = `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`;
+        document.getElementById('stat-daily-safe').textContent = formatMoney(safePerDay);
+        document.getElementById('stat-daily-sub').textContent = remaining > 0
+          ? `Safe daily pace until ${formatShortDate(bounds.endStr)}`
+          : 'Budget depleted for this period';
+      }
+
+      // Render Category Progress Bars
+      function renderCategoryBreakdown(scopedTransactions) {
+        const container = document.getElementById('categories-list');
+        const limitKey = state.mode === 'weekly' ? 'weeklyLimit' : 'monthlyLimit';
+
+        // Sum spending per category
+        const spentByCat = {};
+        scopedTransactions.forEach(tx => {
+          spentByCat[tx.categoryId] = (spentByCat[tx.categoryId] || 0) + Number(tx.amount);
+        });
+
+        if (state.categories.length === 0) {
+          container.innerHTML = `<p class="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">No categories configured. Click "Edit Limits / Add Category" to create one.</p>`;
+          return;
+        }
+
+        container.innerHTML = state.categories.map(cat => {
+          const limit = Number(cat[limitKey]) || 0;
+          const spent = spentByCat[cat.id] || 0;
+          const catRemaining = limit - spent;
+          const rawPct = limit > 0 ? (spent / limit) * 100 : (spent > 0 ? 100 : 0);
+          const barWidth = Math.min(100, Math.max(0, rawPct));
+
+          let barColorClass = 'bg-emerald-500';
+          let remTextClass = 'text-emerald-600 dark:text-emerald-400';
+          if (spent > limit) {
+            barColorClass = 'bg-rose-500';
+            remTextClass = 'text-rose-600 dark:text-rose-400 font-semibold';
+          } else if (rawPct >= 80) {
+            barColorClass = 'bg-amber-500';
+            remTextClass = 'text-amber-600 dark:text-amber-400 font-medium';
+          }
+
+          const remLabel = catRemaining >= 0
+            ? `${formatMoney(catRemaining)} left`
+            : `${formatMoney(Math.abs(catRemaining))} over`;
+
+          return `
+            <div class="group p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 hover:border-slate-200 dark:hover:border-slate-700 transition-colors">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${cat.color}"></span>
+                  <span class="text-sm font-semibold text-slate-800 dark:text-slate-100">${escapeHtml(cat.name)}</span>
+                  <span class="text-xs font-medium text-slate-400 dark:text-slate-500 tabular-nums">(${Math.round(rawPct)}%)</span>
+                </div>
+                <div class="flex items-center gap-3 text-xs tabular-nums">
+                  <span class="text-slate-600 dark:text-slate-300 font-medium">
+                    ${formatMoney(spent)} <span class="text-slate-400">/ ${formatMoney(limit)}</span>
+                  </span>
+                  <span class="${remTextClass} min-w-[85px] text-right">${remLabel}</span>
+                </div>
+              </div>
+              <div class="w-full h-2 bg-slate-200 dark:bg-slate-700/80 rounded-full overflow-hidden">
+                <div class="h-full ${barColorClass} rounded-full transition-all duration-500" style="width: ${barWidth}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Donut Chart via Chart.js
+      function renderChart(scopedTransactions) {
+        const canvas = document.getElementById('spending-chart');
+        const emptyEl = document.getElementById('chart-empty-state');
+
+        const spentByCat = {};
+        scopedTransactions.forEach(tx => {
+          spentByCat[tx.categoryId] = (spentByCat[tx.categoryId] || 0) + Number(tx.amount);
+        });
+
+        const labels = [];
+        const data = [];
+        const colors = [];
+
+        state.categories.forEach(cat => {
+          const val = spentByCat[cat.id] || 0;
+          if (val > 0) {
+            labels.push(cat.name);
+            data.push(val);
+            colors.push(cat.color);
+          }
+        });
+
+        // Handle uncategorized/deleted category fallback
+        Object.keys(spentByCat).forEach(catId => {
+          if (!state.categories.some(c => c.id === catId) && spentByCat[catId] > 0) {
+            labels.push('Other');
+            data.push(spentByCat[catId]);
+            colors.push('#94a3b8');
+          }
+        });
+
+        if (data.length === 0) {
+          canvas.classList.add('hidden');
+          emptyEl.classList.remove('hidden');
+          if (spendingChart) {
+            spendingChart.destroy();
+            spendingChart = null;
+          }
+          return;
+        }
+
+        canvas.classList.remove('hidden');
+        emptyEl.classList.add('hidden');
+
+        const isDark = state.theme === 'dark';
+        const textColor = isDark ? '#cbd5e1' : '#475569';
+        const borderColor = isDark ? '#0f172a' : '#ffffff';
+
+        if (spendingChart) {
+          spendingChart.destroy();
+        }
+
+        spendingChart = new Chart(canvas, {
+          type: 'doughnut',
+          data: {
+            labels,
+            datasets: [{
+              data,
+              backgroundColor: colors,
+              borderColor,
+              borderWidth: 2,
+              hoverOffset: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '66%',
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  color: textColor,
+                  boxWidth: 11,
+                  boxHeight: 11,
+                  usePointStyle: true,
+                  pointStyle: 'circle',
+                  padding: 12,
+                  font: {
+                    family: 'Inter, sans-serif',
+                    size: 11,
+                    weight: '500'
+                  }
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (ctx) {
+                    const val = ctx.parsed || 0;
+                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                    return ` ${ctx.label}: ${formatMoney(val)} (${pct}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Render Category Dropdowns (Form & History Filter)
+      function renderCategoryDropdowns() {
+        const formSelect = document.getElementById('exp-category');
+        const filterSelect = document.getElementById('filter-history-category');
+
+        const currentFormVal = formSelect.value;
+        formSelect.innerHTML = state.categories.map(c =>
+          `<option value="${c.id}">${escapeHtml(c.name)}</option>`
+        ).join('');
+        if (state.categories.some(c => c.id === currentFormVal)) {
+          formSelect.value = currentFormVal;
+        }
+
+        filterSelect.innerHTML = `<option value="ALL">All Categories</option>` +
+          state.categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+        filterSelect.value = state.historyCategoryFilter;
+      }
+
+      // Render Transaction History List
+      function renderTransactionHistory(scopedTransactions) {
+        const listEl = document.getElementById('transactions-list');
+        const subtitleEl = document.getElementById('history-subtitle');
+
+        // Apply search & category filter on top of active scope
+        let filtered = scopedTransactions.filter(tx => {
+          const matchesCat = state.historyCategoryFilter === 'ALL' || tx.categoryId === state.historyCategoryFilter;
+          const q = state.searchQuery.trim().toLowerCase();
+          const catObj = state.categories.find(c => c.id === tx.categoryId);
+          const catName = catObj ? catObj.name.toLowerCase() : '';
+          const matchesQuery = !q ||
+            (tx.note && tx.note.toLowerCase().includes(q)) ||
+            (tx.method && tx.method.toLowerCase().includes(q)) ||
+            catName.includes(q);
+          return matchesCat && matchesQuery;
+        });
+
+        // Sort newest date first, then reverse insertion order
+        filtered.sort((a, b) => b.date.localeCompare(a.date));
+
+        subtitleEl.textContent = `Showing ${filtered.length} of ${scopedTransactions.length} expense${scopedTransactions.length === 1 ? '' : 's'} in current scope`;
+
+        if (filtered.length === 0) {
+          listEl.innerHTML = `
+            <div class="py-10 text-center">
+              <p class="text-sm font-medium text-slate-500 dark:text-slate-400">No matching expenses found.</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">Try adjusting your filters or log a new expense.</p>
+            </div>
+          `;
+          return;
+        }
+
+        const catMap = {};
+        state.categories.forEach(c => { catMap[c.id] = c; });
+
+        listEl.innerHTML = filtered.map(tx => {
+          const cat = catMap[tx.categoryId] || { name: 'Other', color: '#94a3b8' };
+          const displayNote = tx.note && tx.note.trim() ? escapeHtml(tx.note) : escapeHtml(cat.name);
+
+          return `
+            <div class="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 px-2 rounded-xl transition-colors">
+              <div class="flex items-start sm:items-center gap-3 min-w-0">
+                <span class="w-2.5 h-2.5 rounded-full mt-1.5 sm:mt-0 shrink-0" style="background-color: ${cat.color}"></span>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">${displayNote}</p>
+                  <div class="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span class="px-2 py-0.5 rounded-md font-medium text-[11px]" style="background-color: ${cat.color}18; color: ${cat.color}">
+                      ${escapeHtml(cat.name)}
+                    </span>
+                    <span>•</span>
+                    <span>${formatShortDate(tx.date)}</span>
+                    <span>•</span>
+                    <span>${escapeHtml(tx.method || 'Cash')}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2.5 shrink-0">
+                <span class="text-sm font-bold tabular-nums text-slate-900 dark:text-white">
+                  -${formatMoney(tx.amount)}
+                </span>
+                <button type="button" data-delete-tx="${tx.id}" title="Delete expense"
+                  class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Modal Categories List
+      function renderSettingsModalList() {
+        const container = document.getElementById('modal-categories-list');
+        document.getElementById('toggle-auto-sync').checked = state.autoSyncLimits;
+
+        container.innerHTML = state.categories.map(cat => `
+          <div class="grid grid-cols-12 gap-2 items-center py-2.5">
+            <div class="col-span-5 flex items-center gap-2 min-w-0">
+              <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${cat.color}"></span>
+              <span class="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200 truncate">${escapeHtml(cat.name)}</span>
+            </div>
+            <div class="col-span-3">
+              <input type="number" min="0" step="any" data-cat-weekly="${cat.id}" value="${cat.weeklyLimit}"
+                class="w-full px-2.5 py-1.5 text-xs sm:text-sm tabular-nums rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="col-span-3">
+              <input type="number" min="0" step="any" data-cat-monthly="${cat.id}" value="${cat.monthlyLimit}"
+                class="w-full px-2.5 py-1.5 text-xs sm:text-sm tabular-nums rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="col-span-1 text-right">
+              <button type="button" data-remove-cat="${cat.id}" title="Delete category"
+                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Master Render Function
+      function renderAll() {
+        applyTheme();
+        renderHeaderAndContext();
+        renderCategoryDropdowns();
+        const scopedTransactions = getFilteredTransactionsForScope();
+        renderSummaryCards(scopedTransactions);
+        renderCategoryBreakdown(scopedTransactions);
+        renderChart(scopedTransactions);
+        renderTransactionHistory(scopedTransactions);
+      }
+
+      // XSS Sanitization Helper
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      // Export Transactions to CSV
+      function exportTransactionsCSV() {
+        if (state.transactions.length === 0) {
+          showToast('No transactions available to export.', 'error');
+          return;
+        }
+        const catMap = {};
+        state.categories.forEach(c => { catMap[c.id] = c.name; });
+
+        const headers = ['Date', 'Category', 'Description', 'Payment Method', `Amount (${state.currency})`];
+        const rows = state.transactions.map(tx => [
+          tx.date,
+          `"${(catMap[tx.categoryId] || 'Other').replace(/"/g, '""')}"`,
+          `"${(tx.note || '').replace(/"/g, '""')}"`,
+          `"${(tx.method || 'Cash').replace(/"/g, '""')}"`,
+          tx.amount
+        ]);
+
+        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `student_budget_${toLocalDateStr(new Date())}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast('Exported budget transactions to CSV!');
+      }
+
+      // Wire Up Event Listeners
+      function bindEvents() {
+        // Mode Toggle: Weekly / Monthly
+        document.getElementById('btn-mode-weekly').addEventListener('click', () => {
+          state.mode = 'weekly';
+          saveState();
+          renderAll();
+        });
+
+        document.getElementById('btn-mode-monthly').addEventListener('click', () => {
+          state.mode = 'monthly';
+          saveState();
+          renderAll();
+        });
+
+        // Currency Change
+        document.getElementById('currency-select').addEventListener('change', (e) => {
+          state.currency = e.target.value;
+          saveState();
+          renderAll();
+          showToast(`Currency switched to ${state.currency}`);
+        });
+
+        // Scope Filter Change
+        document.getElementById('scope-filter').addEventListener('change', (e) => {
+          state.scopeFilter = e.target.value;
+          saveState();
+          renderAll();
+        });
+
+        // Theme Toggle
+        document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+          state.theme = state.theme === 'dark' ? 'light' : 'dark';
+          saveState();
+          renderAll();
+        });
+
+        // Quick Expense Submission
+        document.getElementById('expense-form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          const amountInput = document.getElementById('exp-amount');
+          const categoryInput = document.getElementById('exp-category');
+          const noteInput = document.getElementById('exp-note');
+          const dateInput = document.getElementById('exp-date');
+          const methodInput = document.getElementById('exp-method');
+
+          const amount = parseFloat(amountInput.value);
+          if (isNaN(amount) || amount <= 0) {
+            showToast('Please enter a valid positive amount.', 'error');
+            return;
+          }
+
+          const newTx = {
+            id: 'tx_' + Date.now(),
+            amount: amount,
+            categoryId: categoryInput.value,
+            note: noteInput.value.trim(),
+            date: dateInput.value || toLocalDateStr(new Date()),
+            method: methodInput.value
+          };
+
+          state.transactions.unshift(newTx);
+          saveState();
+          renderAll();
+
+          amountInput.value = '';
+          noteInput.value = '';
+          showToast(`Logged ${formatMoney(amount)} expense!`);
+        });
+
+        // Delete Transaction (Delegated)
+        document.getElementById('transactions-list').addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-delete-tx]');
+          if (!btn) return;
+          const txId = btn.getAttribute('data-delete-tx');
+          state.transactions = state.transactions.filter(t => t.id !== txId);
+          saveState();
+          renderAll();
+          showToast('Expense removed.');
+        });
+
+        // Search & Filter History
+        document.getElementById('search-transactions').addEventListener('input', (e) => {
+          state.searchQuery = e.target.value;
+          renderTransactionHistory(getFilteredTransactionsForScope());
+        });
+
+        document.getElementById('filter-history-category').addEventListener('change', (e) => {
+          state.historyCategoryFilter = e.target.value;
+          renderTransactionHistory(getFilteredTransactionsForScope());
+        });
+
+        // CSV Export, Load Sample, Clear Data
+        document.getElementById('btn-export-csv').addEventListener('click', exportTransactionsCSV);
+
+        document.getElementById('btn-load-sample').addEventListener('click', () => {
+          openConfirmDialog(
+            'Load Sample Student Data?',
+            'This will replace your current expenses with realistic sample student transactions.',
+            () => {
+              state.transactions = generateSampleTransactions();
+              saveState();
+              renderAll();
+              showToast('Sample student expenses loaded!');
+            }
+          );
+        });
+
+        document.getElementById('btn-clear-data').addEventListener('click', () => {
+          openConfirmDialog(
+            'Clear All Logged Expenses?',
+            'All recorded transactions will be permanently deleted. Your category limits will remain intact.',
+            () => {
+              state.transactions = [];
+              saveState();
+              renderAll();
+              showToast('All expenses cleared.');
+            }
+          );
+        });
+
+        // Settings Modal Open / Close
+        const openModal = () => {
+          renderSettingsModalList();
+          const modal = document.getElementById('settings-modal');
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        };
+
+        const closeModal = () => {
+          const modal = document.getElementById('settings-modal');
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+          saveState();
+          renderAll();
+        };
+
+        document.getElementById('btn-open-settings').addEventListener('click', openModal);
+        document.getElementById('btn-quick-edit-budget').addEventListener('click', openModal);
+        document.getElementById('btn-manage-categories-inline').addEventListener('click', openModal);
+        document.getElementById('btn-close-settings').addEventListener('click', closeModal);
+        document.getElementById('btn-save-settings').addEventListener('click', () => {
+          closeModal();
+          showToast('Budget limits updated!');
+        });
+
+        // Auto-Sync Toggle
+        document.getElementById('toggle-auto-sync').addEventListener('change', (e) => {
+          state.autoSyncLimits = e.target.checked;
+          saveState();
+        });
+
+        // Inline Limit Updates inside Modal
+        document.getElementById('modal-categories-list').addEventListener('input', (e) => {
+          const weeklyCatId = e.target.getAttribute('data-cat-weekly');
+          const monthlyCatId = e.target.getAttribute('data-cat-monthly');
+          const val = Math.max(0, parseFloat(e.target.value) || 0);
+
+          if (weeklyCatId) {
+            const cat = state.categories.find(c => c.id === weeklyCatId);
+            if (cat) {
+              cat.weeklyLimit = val;
+              if (state.autoSyncLimits) {
+                cat.monthlyLimit = Math.round(val * 4 * 100) / 100;
+                const monthlyInput = document.querySelector(`[data-cat-monthly="${weeklyCatId}"]`);
+                if (monthlyInput) monthlyInput.value = cat.monthlyLimit;
+              }
+            }
+          } else if (monthlyCatId) {
+            const cat = state.categories.find(c => c.id === monthlyCatId);
+            if (cat) {
+              cat.monthlyLimit = val;
+              if (state.autoSyncLimits) {
+                cat.weeklyLimit = Math.round((val / 4) * 100) / 100;
+                const weeklyInput = document.querySelector(`[data-cat-weekly="${monthlyCatId}"]`);
+                if (weeklyInput) weeklyInput.value = cat.weeklyLimit;
+              }
+            }
+          }
+        });
+
+        // Delete Category inside Modal
+        document.getElementById('modal-categories-list').addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-remove-cat]');
+          if (!btn) return;
+          if (state.categories.length <= 1) {
+            showToast('At least one category is required.', 'error');
+            return;
+          }
+          const catId = btn.getAttribute('data-remove-cat');
+          state.categories = state.categories.filter(c => c.id !== catId);
+          renderSettingsModalList();
+          saveState();
+          renderAll();
+        });
+
+        // Add Custom Category inside Modal
+        document.getElementById('btn-add-category').addEventListener('click', () => {
+          const nameInput = document.getElementById('new-cat-name');
+          const weeklyInput = document.getElementById('new-cat-weekly');
+          const colorInput = document.getElementById('new-cat-color');
+
+          const name = nameInput.value.trim();
+          const weekly = Math.max(0, parseFloat(weeklyInput.value) || 0);
+
+          if (!name) {
+            showToast('Enter a category name.', 'error');
+            return;
+          }
+
+          const newCat = {
+            id: 'cat_' + Date.now(),
+            name,
+            color: colorInput.value || '#6366f1',
+            weeklyLimit: weekly,
+            monthlyLimit: weekly * 4
+          };
+
+          state.categories.push(newCat);
+          nameInput.value = '';
+          weeklyInput.value = '';
+          renderSettingsModalList();
+          saveState();
+          renderAll();
+          showToast(`Added "${name}" category!`);
+        });
+
+        // Confirm Modal Actions
+        document.getElementById('btn-confirm-cancel').addEventListener('click', closeConfirmDialog);
+        document.getElementById('btn-confirm-ok').addEventListener('click', () => {
+          if (typeof pendingConfirmCallback === 'function') {
+            pendingConfirmCallback();
+          }
+          closeConfirmDialog();
+        });
+      }
+
+      // Initialize Application
+      function init() {
+        loadState();
+        // Set default date input to today
+        document.getElementById('exp-date').value = toLocalDateStr(new Date());
+        bindEvents();
+        renderAll();
+      }
+
+      window.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>
